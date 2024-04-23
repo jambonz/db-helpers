@@ -22,7 +22,7 @@
   "dependencies": {
     "cidr-matcher": "^2.1.1",
     "debug": "^4.3.4",
-    "mysql2": "^2.3.3",
+    "mysql2": "^3.9.7",
     "node-object-hash": "^2.3.10",
     "uuid": "^8.3.2"
   },
