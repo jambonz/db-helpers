@@ -1,4 +1,4 @@
-const mysql = require('mysql2');
+const { Sequelize } = require('sequelize');
 const cacheActivator = require('./lib/cache-activator');
 
 const pingDb = async(pool) => {
@@ -15,42 +15,71 @@ const pingDb = async(pool) => {
 };
 
 module.exports = function(mysqlConfig, logger, writeMysqlConfig = null)  {
-  const pool = mysql.createPool(mysqlConfig);
+  const database = process.env.JAMBONES_DB_DATABASE;
+  const username = process.env.JAMBONES_DB_USER;
+  const password = process.env.JAMBONES_DB_PASSWORD;
+  const host = process.env.JAMBONES_DB_HOST;
+  const dialect = process.env.JAMBONES_DB_DIALECT || 'mysql';
+  const config = {
+    host,
+    dialect, /* one of 'mysql' | 'postgres' | 'mariadb' | 'mssql' */
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  };
+
+  if( process.env.JAMBONES_DB_CA_CERT && fs.fileExistsSync(process.env.JAMBONES_DB_CA_CERT )){
+    config.ssl = {
+      ca : fs.readFileSync(process.env.JAMBONES_DB_CA_CERT)
+    }
+  }
+
+
+  const pool = new Sequelize(database, username, password, config);
+
   let writePool = null;
   let writeConfiguration = writeMysqlConfig;
-  if (process.env.JAMBONES_MYSQL_WRITE_HOST &&
-    process.env.JAMBONES_MYSQL_WRITE_USER &&
-    process.env.JAMBONES_MYSQL_WRITE_PASSWORD &&
-    process.env.JAMBONES_MYSQL_WRITE_DATABASE) {
+  if (process.env.JAMBONES_DB_WRITE_HOST &&
+    process.env.JAMBONES_DB_WRITE_USER &&
+    process.env.JAMBONES_DB_WRITE_PASSWORD &&
+    process.env.JAMBONES_DB_WRITE_DATABASE) {
     writeConfiguration = {
-      host: process.env.JAMBONES_MYSQL_WRITE_HOST,
-      port: process.env.JAMBONES_MYSQL_WRITE_PORT || 3306,
-      user: process.env.JAMBONES_MYSQL_WRITE_USER,
-      password: process.env.JAMBONES_MYSQL_WRITE_PASSWORD,
-      database: process.env.JAMBONES_MYSQL_WRITE_DATABASE,
-      connectionLimit: process.env.JAMBONES_MYSQL_WRITE_CONNECTION_LIMIT || 10
+      dialect: process.env.JAMBONES_DB_WRITE_DIALECT || 'mysql',
+      host: process.env.JAMBONES_DB_WRITE_HOST,
+      port: process.env.JAMBONES_DB_WRITE_PORT || 3306,
+      user: process.env.JAMBONES_DB_WRITE_USER,
+      password: process.env.JAMBONES_DB_WRITE_PASSWORD,
+      database: process.env.JAMBONES_DB_WRITE_DATABASE,
+      connectionLimit: process.env.JAMBONES_DB_WRITE_CONNECTION_LIMIT || 10
     };
   }
+
   if (writeMysqlConfig) {
-    writePool = mysql.createPool(writeConfiguration);
-    writePool.getConnection((err, conn) => {
-      if (err) throw err;
-      conn.ping((err) => {
-        if (err) return logger.error(err, `Error pinging mysql at ${JSON.stringify(writeConfiguration)}`);
-      });
-    });
+    const writeOptions = {
+      host: writeConfiguration.host,
+      port: writeConfiguration.port,
+      dialect: writeConfiguration.dialect, /* one of 'mysql' | 'postgres' | 'mariadb' | 'mssql' */
+      pool: {
+        max: 5,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+      }
+    };
+    writePool = new Sequelize(writeConfiguration.database,
+      writeConfiguration.user, writeConfiguration.password, writeOptions);
+    writePool.authenticate().catch((err) => { throw err; });
   }
   // Cache activation for read only.
-  if (process.env.JAMBONES_MYSQL_REFRESH_TTL)
+  if (process.env.JAMBONES_DB_REFRESH_TTL)
     cacheActivator.activate(pool);
 
   logger = logger || {info: () => {}, error: () => {}, debug: () => {}};
-  pool.getConnection((err, conn) => {
-    if (err) throw err;
-    conn.ping((err) => {
-      if (err) return logger.error(err, `Error pinging mysql at ${JSON.stringify(mysqlConfig)}`);
-    });
-  });
+
+  pool.authenticate().catch((err) => { throw err; });
 
   return {
     pool,
