@@ -1,76 +1,70 @@
 const { Sequelize } = require('sequelize');
+const fs = require('fs');
 const cacheActivator = require('./lib/cache-activator');
 
 const pingDb = async(pool) => {
   return new Promise((resolve, reject) => {
-    pool.getConnection((err, conn) => {
-      if (err) return reject(err);
-      conn.ping((err) => {
-        pool.releaseConnection(conn);
-        if (err) return reject(err);
-        resolve();
-      });
+    pool.authenticate()
+    .then(function() {
+      resolve();
+    })
+    .catch(function (err) {
+      reject(err);
     });
   });
 };
 
-module.exports = function(mysqlConfig, logger, writeMysqlConfig = null)  {
-  const database = process.env.JAMBONES_DB_DATABASE;
-  const username = process.env.JAMBONES_DB_USER;
-  const password = process.env.JAMBONES_DB_PASSWORD;
-  const host = process.env.JAMBONES_DB_HOST;
+module.exports = function(mysqlConfig, logger)  {
+  let writePool = null;
+  const { host, user, port, password, database, connectionLimit } = mysqlConfig;
+    
   const dialect = process.env.JAMBONES_DB_DIALECT || 'mysql';
   const config = {
     host,
-    dialect, /* one of 'mysql' | 'postgres' | 'mariadb' | 'mssql' */
+    dialect, /* one of 'mysql' | 'postgres' | 'mariadb'  */
+    port,
     pool: {
-      max: 5,
+      max: connectionLimit || 10,
       min: 0,
       acquire: 30000,
       idle: 10000
     }
   };
 
-  if( process.env.JAMBONES_DB_CA_CERT && fs.fileExistsSync(process.env.JAMBONES_DB_CA_CERT )){
+  // allow including database ssl certificate
+  if (process.env.JAMBONES_DB_CA_CERT && fs.fileExistsSync(process.env.JAMBONES_DB_CA_CERT)) {
     config.ssl = {
       ca : fs.readFileSync(process.env.JAMBONES_DB_CA_CERT)
-    }
+    };
   }
 
+  // create new Sequelize connection
+  const pool = new Sequelize(database, user, password, config);
 
-  const pool = new Sequelize(database, username, password, config);
-
-  let writePool = null;
-  let writeConfiguration = writeMysqlConfig;
+  pool.promise = () => pool;
+  pool.execute = () => pool.query;
+  
   if (process.env.JAMBONES_DB_WRITE_HOST &&
     process.env.JAMBONES_DB_WRITE_USER &&
     process.env.JAMBONES_DB_WRITE_PASSWORD &&
     process.env.JAMBONES_DB_WRITE_DATABASE) {
+    const user = process.env.JAMBONES_DB_WRITE_USER;
+    const password = process.env.JAMBONES_DB_WRITE_PASSWORD;
+    const database = process.env.JAMBONES_DB_WRITE_DATABASE;
     writeConfiguration = {
-      dialect: process.env.JAMBONES_DB_WRITE_DIALECT || 'mysql',
       host: process.env.JAMBONES_DB_WRITE_HOST,
+      dialect: process.env.JAMBONES_DB_WRITE_DIALECT || 'mysql',      
       port: process.env.JAMBONES_DB_WRITE_PORT || 3306,
-      user: process.env.JAMBONES_DB_WRITE_USER,
-      password: process.env.JAMBONES_DB_WRITE_PASSWORD,
-      database: process.env.JAMBONES_DB_WRITE_DATABASE,
-      connectionLimit: process.env.JAMBONES_DB_WRITE_CONNECTION_LIMIT || 10
-    };
-  }
-
-  if (writeMysqlConfig) {
-    const writeOptions = {
-      host: writeConfiguration.host,
-      port: writeConfiguration.port,
-      dialect: writeConfiguration.dialect, /* one of 'mysql' | 'postgres' | 'mariadb' | 'mssql' */
       pool: {
-        max: 5,
+        max: process.env.JAMBONES_DB_WRITE_CONNECTION_LIMIT || 10,
         min: 0,
         acquire: 30000,
         idle: 10000
       }
     };
-    writePool = new Sequelize(writeConfiguration.database,
-      writeConfiguration.user, writeConfiguration.password, writeOptions);
+    // create new Sequelize connection for write pool
+    writePool = new Sequelize(database, user, password, writeConfiguration);
+    // test connection to database write pool
     writePool.authenticate().catch((err) => { throw err; });
   }
   // Cache activation for read only.
@@ -78,7 +72,8 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null)  {
     cacheActivator.activate(pool);
 
   logger = logger || {info: () => {}, error: () => {}, debug: () => {}};
-
+  
+   // test connection to the database
   pool.authenticate().catch((err) => { throw err; });
 
   return {

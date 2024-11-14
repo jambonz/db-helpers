@@ -13,7 +13,7 @@ test('application tests', async(t) => {
     let app = await lookupAppByPhoneNumber('15083084809');
     //console.log(`app: ${JSON.stringify(app)}`);
     t.ok(app !== null, 'retrieves application for phone number');
-    t.ok(app.messaging_hook, 'retrieves messaging hook');
+    t.ok(app.messaging_hook_sid, 'retrieves messaging hook');
 
     app = await lookupAppByRegex('+44100100100', '422affb5-4d1e-45e8-b2a4-2623f08b95ef');
     t.ok(app !== null, 'retrieves application by regex');
