@@ -3,21 +3,13 @@ const fs = require('fs');
 const cacheActivator = require('./lib/cache-activator');
 
 const pingDb = async(pool) => {
-  return new Promise((resolve, reject) => {
-    pool.authenticate()
-    .then(function() {
-      resolve();
-    })
-    .catch(function (err) {
-      reject(err);
-    });
-  });
+  await pool.authenticate();
 };
 
 module.exports = function(mysqlConfig, logger)  {
   let writePool = null;
   const { host, user, port, password, database, connectionLimit } = mysqlConfig;
-    
+
   const dialect = process.env.JAMBONES_DB_DIALECT || 'mysql';
   const config = {
     host,
@@ -43,20 +35,20 @@ module.exports = function(mysqlConfig, logger)  {
 
   pool.promise = () => pool;
   pool.execute = () => pool.query;
-  
-  if (process.env.JAMBONES_DB_WRITE_HOST &&
-    process.env.JAMBONES_DB_WRITE_USER &&
-    process.env.JAMBONES_DB_WRITE_PASSWORD &&
-    process.env.JAMBONES_DB_WRITE_DATABASE) {
-    const user = process.env.JAMBONES_DB_WRITE_USER;
-    const password = process.env.JAMBONES_DB_WRITE_PASSWORD;
-    const database = process.env.JAMBONES_DB_WRITE_DATABASE;
-    writeConfiguration = {
-      host: process.env.JAMBONES_DB_WRITE_HOST,
-      dialect: process.env.JAMBONES_DB_WRITE_DIALECT || 'mysql',      
-      port: process.env.JAMBONES_DB_WRITE_PORT || 3306,
+
+  if (process.env.JAMBONES_MYSQL_WRITE_HOST &&
+    process.env.JAMBONES_MYSQL_WRITE_USER &&
+    process.env.JAMBONES_MYSQL_WRITE_PASSWORD &&
+    process.env.JAMBONES_MYSQL_WRITE_DATABASE) {
+    const user = process.env.JAMBONES_MYSQL_WRITE_USER;
+    const password = process.env.JAMBONES_MYSQL_WRITE_PASSWORD;
+    const database = process.env.JAMBONES_MYSQL_WRITE_DATABASE;
+    const writeConfiguration = {
+      host: process.env.JAMBONES_MYSQL_WRITE_HOST,
+      dialect: 'mysql',
+      port: process.env.JAMBONES_MYSQL_WRITE_PORT || 3306,
       pool: {
-        max: process.env.JAMBONES_DB_WRITE_CONNECTION_LIMIT || 10,
+        max: process.env.JAMBONES_MYSQL_WRITE_CONNECTION_LIMIT || 10,
         min: 0,
         acquire: 30000,
         idle: 10000
@@ -67,13 +59,39 @@ module.exports = function(mysqlConfig, logger)  {
     // test connection to database write pool
     writePool.authenticate().catch((err) => { throw err; });
   }
+
+  if (process.env.JAMBONES_POSTGRES_WRITE_HOST &&
+    process.env.JAMBONES_POSTGRES_WRITE_USER &&
+    process.env.JAMBONES_POSTGRES_WRITE_PASSWORD &&
+    process.env.JAMBONES_POSTGRES_WRITE_DATABASE) {
+    const user = process.env.JAMBONES_POSTGRES_WRITE_USER;
+    const password = process.env.JAMBONES_POSTGRES_WRITE_PASSWORD;
+    const database = process.env.JAMBONES_POSTGRES_WRITE_DATABASE;
+    const writeConfiguration = {
+      host: process.env.JAMBONES_POSTGRES_WRITE_HOST,
+      dialect: 'postgres',
+      port: process.env.JAMBONES_POSTGRES_WRITE_PORT || 3306,
+      pool: {
+        max: process.env.JAMBONES_POSTGRES_WRITE_CONNECTION_LIMIT || 10,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+      }
+    };
+    // create new Sequelize connection for write pool
+    writePool = new Sequelize(database, user, password, writeConfiguration);
+    // test connection to database write pool
+    writePool.authenticate().catch((err) => { throw err; });
+  }
+
+
   // Cache activation for read only.
   if (process.env.JAMBONES_DB_REFRESH_TTL)
     cacheActivator.activate(pool);
 
   logger = logger || {info: () => {}, error: () => {}, debug: () => {}};
-  
-   // test connection to the database
+
+  // test connection to the database
   pool.authenticate().catch((err) => { throw err; });
 
   return {
