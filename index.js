@@ -8,12 +8,11 @@ const pingDb = async(pool) => {
 
 module.exports = function(mysqlConfig, logger)  {
   let writePool = null;
-  const { host, user, port, password, database, connectionLimit } = mysqlConfig;
+  const { host, user, port, password, database, connectionLimit, dialect } = mysqlConfig;
 
-  const dialect = process.env.JAMBONES_DB_DIALECT || 'mysql';
   const config = {
     host,
-    dialect, /* one of 'mysql' | 'postgres' | 'mariadb'  */
+    dialect: process.env.JAMBONES_DB_DIALECT || dialect || 'mysql', /* one of 'mysql' | 'postgres' | 'mariadb'  */
     port,
     pool: {
       max: connectionLimit || 10,
