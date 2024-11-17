@@ -15,7 +15,7 @@ values ('5f190a4f-b997-4f04-b56e-03c627ea547d', 'Account A2', '3f35518f-5a0d-4c2
 insert into voip_carriers (voip_carrier_sid, name, account_sid, service_provider_sid, e164_leading_plus) 
 values ('387c1452-620d-4195-9f19-c9814ef90d78', 'westco2', NULL, '3f35518f-5a0d-4c2e-90a5-2407bb3b36f0', 1);
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, port, inbound, outbound) 
-values ('88191aa4-fff2-4c64-b005-43414a8e94d7', '387c1452-620d-4195-9f19-c9814ef90d78', '6.6.6.6', 5060, true, true);
+values ('88191aa4-fff2-4c64-b005-43414a8e94d7', '387c1452-620d-4195-9f19-c9814ef90d78', '6.6.6.6', 5060, 1, 1);
 
 insert into voip_carriers (voip_carrier_sid, name, account_sid, service_provider_sid, e164_leading_plus) values ('287c1452-620d-4195-9f19-c9814ef90d78', 'westco', 'ee9d7d49-b3e4-4fdb-9d66-661149f717e8', '3f35518f-5a0d-4c2e-90a5-2407bb3b36f0', 1);
 insert into voip_carriers (voip_carrier_sid, name, account_sid, service_provider_sid) values ('ceafc86d-11f3-4dbd-9523-1e0f4502bfc7', 'eastco', 'ee9d7d49-b3e4-4fdb-9d66-661149f717e8', '3f35518f-5a0d-4c2e-90a5-2407bb3b36f0');
@@ -28,29 +28,29 @@ insert into smpp_gateways (smpp_gateway_sid, voip_carrier_sid, ipv4, port, is_pr
 
 -- westco gateways
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, inbound, outbound) 
-values ('124a5339-c62c-4075-9e19-f4de70a96597', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.3', true, true);
+values ('124a5339-c62c-4075-9e19-f4de70a96597', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.3', 1, 1);
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, port, inbound, outbound) 
-values ('efbc4830-57cd-4c78-a56f-d64fdf210fe8', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.3', 5062, false, true);
+values ('efbc4830-57cd-4c78-a56f-d64fdf210fe8', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.3', 5062, 0, 1);
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, inbound, outbound)
-values ('1e674a9a-763d-4247-8a54-b7a56ab6b605', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.4/31', true, false);
+values ('1e674a9a-763d-4247-8a54-b7a56ab6b605', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.4/31', 1, 0);
 
 -- eastco gateways
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, inbound, outbound) 
-values ('48191aa4-fff2-4c64-b005-43414a8e94d7', 'ceafc86d-11f3-4dbd-9523-1e0f4502bfc7', '6.6.6.6', true, true);
+values ('48191aa4-fff2-4c64-b005-43414a8e94d7', 'ceafc86d-11f3-4dbd-9523-1e0f4502bfc7', '6.6.6.6', 1, 1);
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, port, inbound, outbound) 
-values ('ab613ca1-710c-4b42-b113-4b219eee80bb', 'ceafc86d-11f3-4dbd-9523-1e0f4502bfc7', '6.6.6.6', 5062, false, true);
+values ('ab613ca1-710c-4b42-b113-4b219eee80bb', 'ceafc86d-11f3-4dbd-9523-1e0f4502bfc7', '6.6.6.6', 5062, 0, 1);
 
 -- southco gateways
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, inbound, outbound) 
-values ('bd4b8157-35c7-4c04-8e95-47b5c3effd46', '64035d77-f735-4b19-9dc1-15f8cf44636c', '9.9.9.9', true, true);
+values ('bd4b8157-35c7-4c04-8e95-47b5c3effd46', '64035d77-f735-4b19-9dc1-15f8cf44636c', '9.9.9.9', 1, 1);
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, port, inbound, outbound) 
-values ('9637b363-6e09-4fa7-938c-7b142d0335e0', '64035d77-f735-4b19-9dc1-15f8cf44636c', '9.9.9.9', 5062, false, true);
+values ('9637b363-6e09-4fa7-938c-7b142d0335e0', '64035d77-f735-4b19-9dc1-15f8cf44636c', '9.9.9.9', 5062, 0, 1);
 
 -- northco gateways
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, inbound, outbound) 
-values ('bb49319d-7149-45ca-9343-592c60de85f0', '53128ee1-a5f9-4542-8129-c6b1292728ec', '10.10.10.10', true, true);
+values ('bb49319d-7149-45ca-9343-592c60de85f0', '53128ee1-a5f9-4542-8129-c6b1292728ec', '10.10.10.10', 1, 1);
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, port, inbound, outbound) 
-values ('6744e360-95a1-4b10-9837-b27973e600b1', '53128ee1-a5f9-4542-8129-c6b1292728ec', '10.10.10.10', 5062, false, true);
+values ('6744e360-95a1-4b10-9837-b27973e600b1', '53128ee1-a5f9-4542-8129-c6b1292728ec', '10.10.10.10', 5062, 0, 1);
 
 insert into lcr (lcr_sid, name, is_active, account_sid ) values ('4a968442-3d40-4704-83ae-b28f9b4f91d3', 'Test 1', 1, 'ee9d7d49-b3e4-4fdb-9d66-661149f717e8');
 insert into lcr (lcr_sid, name, is_active, service_provider_sid ) values ('4a968442-3d40-4704-83ae-b28f9b4f91d4', 'Test 2', 1, '3f35518f-5a0d-4c2e-90a5-2407bb3b36f0');

@@ -21,11 +21,11 @@ values ('5f200a4f-b997-4f04-b56e-03c627ea547d', 'Account A#', '3f35518f-5a0d-4c2
 insert into voip_carriers (voip_carrier_sid, name, account_sid, service_provider_sid, e164_leading_plus, requires_register, register_username, register_sip_realm, register_password) 
 values ('287c1452-620d-4195-9f19-c9814ef90d78', 'westco', 'ee9d7d49-b3e4-4fdb-9d66-661149f717e8', null, 1, 1, 'janedoe', 'mydomain.com', 'test123');
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, port, inbound, outbound) 
-values ('124a5339-c62c-4075-9e19-f4de70a96597', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.3', 5060, true, true);
+values ('124a5339-c62c-4075-9e19-f4de70a96597', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.3', 5060, 1, 1);
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, port, inbound, outbound) 
-values ('efbc4830-57cd-4c78-a56f-d64fdf210fe8', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.3', 5062, false, true);
+values ('efbc4830-57cd-4c78-a56f-d64fdf210fe8', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.3', 5062, 0, 1);
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, port, inbound, outbound)
-values ('1e674a9a-763d-4247-8a54-b7a56ab6b605', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.4/31', 5060, true, false);
+values ('1e674a9a-763d-4247-8a54-b7a56ab6b605', '287c1452-620d-4195-9f19-c9814ef90d78', '3.3.3.4/31', 5060, 1, 0);
 
 insert into lcr (lcr_sid, name, is_active, account_sid ) values ('4a968442-3d40-4704-83ae-b28f9b4f91d3', 'Test 1', 1, 'ee9d7d49-b3e4-4fdb-9d66-661149f717e8');
 insert into lcr (lcr_sid, name, is_active, service_provider_sid ) values ('4a968442-3d40-4704-83ae-b28f9b4f91d4', 'Test 2', 1, '3f35518f-5a0d-4c2e-90a5-2407bb3b36f0');

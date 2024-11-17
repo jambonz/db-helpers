@@ -1,0 +1,1 @@
+insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, port, inbound, outbound) values ('88191aa4-fff2-4c64-b005-43414a8e94d7', '387c1452-620d-4195-9f19-c9814ef90d78', '6.6.6.6', 5060, true, true);
