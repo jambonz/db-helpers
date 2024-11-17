@@ -1,6 +1,7 @@
 const test = require('tape').test ;
 const config = require('config');
-const mysqlOpts = config.get('mysql');
+const dialect = process.env.JAMBONES_DB_DIALECT  || 'mysql';
+const mysqlOpts = config.get(dialect);
 
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
@@ -14,7 +15,7 @@ test('system_information tests', async(t) => {
   } = fn(mysqlOpts);
   try {
     let info = await lookupSystemInformation();
-    console.log({info});
+    
     t.ok(info.domain_name === 'jambonz.xyz', 'found system information');
 
     t.end();

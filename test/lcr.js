@@ -16,6 +16,7 @@ test('lcr tests', async(t) => {
     lookupSmppGatewaysByBindCredentials
   } = fn(mysqlOpts);
   try {
+   
     let carrier_sid = await lookupOutboundCarrierForAccount('ee9d7d49-b3e4-4fdb-9d66-661149f717e8');
     t.ok(carrier_sid === '287c1452-620d-4195-9f19-c9814ef90d78', 'finds random outbound carrier at account level');
   

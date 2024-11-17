@@ -1,6 +1,7 @@
 const test = require('tape').test ;
 const config = require('config');
-const mysqlOpts = config.get('mysql');
+const dialect = process.env.JAMBONES_DB_DIALECT  || 'mysql';
+const mysqlOpts = config.get(dialect);
 
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
@@ -11,7 +12,7 @@ test('application tests', async(t) => {
   const {lookupAppByPhoneNumber, lookupAppByRegex, lookupAppBySid, lookupAppByRealm, lookupAppByTeamsTenant, lookupAccountBySid} = fn(mysqlOpts);
   try {
     let app = await lookupAppByPhoneNumber('15083084809');
-    //console.log(`app: ${JSON.stringify(app)}`);
+    console.log(`app: ${JSON.stringify(app)}`);
     t.ok(app !== null, 'retrieves application for phone number');
     t.ok(app.messaging_hook_sid, 'retrieves messaging hook');
 
@@ -31,8 +32,7 @@ test('application tests', async(t) => {
     t.ok(app !== null, 'retrieves app by ms teams tenant');
 
     t.end();
-  }
-  catch (err) {
+  } catch (err) {
     t.end(err);
   }
 });

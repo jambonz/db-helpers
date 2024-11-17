@@ -46,7 +46,7 @@ test('populating test database', (t) => {
   });
   
   test('populating test database', (t) => {
-    exec(`PGPASSWORD=jambones_test psql -h 127.0.0.1 -U postgres -d jambones_test -f ${__dirname}/db/populate-test-data.sql`, (err, stdout, stderr) => {
+    exec(`PGPASSWORD=jambones_test psql -h 127.0.0.1 -U postgres -d jambones_test -f ${__dirname}/db/postgres/populate-test-data.sql`, (err, stdout, stderr) => {
       if (err) return t.end(err);
       t.pass('create test data');
       t.end();
