@@ -21,5 +21,12 @@
     "user": "jambones_write_test",
     "database": "jambones_test",
     "password": "jambones_test"
+  },
+  "write-postgres": {
+    "host": "localhost",
+    "dialect": "postgres",
+    "user": "postgres",
+    "database": "jambones_test",
+    "password": "jambones_test"
   }
 }
