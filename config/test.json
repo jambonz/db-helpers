@@ -4,13 +4,28 @@
   },
   "mysql": {
     "host": "localhost",
+    "dialect": "mysql",
     "user": "jambones_test",
+    "database": "jambones_test",
+    "password": "jambones_test"
+  },
+  "postgres": {
+    "host": "localhost",
+    "dialect": "postgres",
+    "user": "postgres",
     "database": "jambones_test",
     "password": "jambones_test"
   },
   "write-mysql": {
     "host": "localhost",
     "user": "jambones_write_test",
+    "database": "jambones_test",
+    "password": "jambones_test"
+  },
+  "write-postgres": {
+    "host": "localhost",
+    "dialect": "postgres",
+    "user": "postgres",
     "database": "jambones_test",
     "password": "jambones_test"
   }
