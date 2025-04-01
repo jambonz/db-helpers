@@ -4,7 +4,8 @@ const FakeTimers = require("@sinonjs/fake-timers");
 const config = require('config');
 const {cache} = require('../lib/cache-manager');
 const cacheActivator = require('../lib/cache-activator');
-const mysqlOpts = config.get('mysql');
+const dialect = process.env.JAMBONES_DB_DIALECT  || 'mysql';
+const mysqlOpts = config.get(dialect);
 
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
@@ -14,6 +15,12 @@ process.on('unhandledRejection', (reason, p) => {
 let clock;
 
 test('cache tests', async(t) => {
+
+  if(dialect != 'mysql'){
+    return t.end();
+  }
+
+
   clock = FakeTimers.install();
 
   const fn = require('..');

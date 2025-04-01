@@ -1,6 +1,7 @@
 const test = require('tape').test ;
 const config = require('config');
-const mysqlOpts = config.get('mysql');
+const dialect = process.env.JAMBONES_DB_DIALECT  || 'mysql';
+const mysqlOpts = config.get(dialect);
 const {execSync} = require('child_process');
 
 process.on('unhandledRejection', (reason, p) => {

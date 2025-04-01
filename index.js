@@ -1,56 +1,97 @@
-const mysql = require('mysql2');
+const { Sequelize } = require('sequelize');
+const fs = require('fs');
 const cacheActivator = require('./lib/cache-activator');
 
 const pingDb = async(pool) => {
-  return new Promise((resolve, reject) => {
-    pool.getConnection((err, conn) => {
-      if (err) return reject(err);
-      conn.ping((err) => {
-        pool.releaseConnection(conn);
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-  });
+  await pool.authenticate();
 };
 
-module.exports = function(mysqlConfig, logger, writeMysqlConfig = null)  {
-  const pool = mysql.createPool(mysqlConfig);
+module.exports = function(mysqlConfig, logger)  {
   let writePool = null;
-  let writeConfiguration = writeMysqlConfig;
+  const { host, user, port, password, database, connectionLimit, dialect } = mysqlConfig;
+
+  const config = {
+    host,
+    dialect: process.env.JAMBONES_DB_DIALECT || dialect || 'mysql', /* one of 'mysql' | 'postgres' | 'mariadb'  */
+    port,
+    pool: {
+      max: connectionLimit || 10,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  };
+
+  // allow including database ssl certificate
+  if (process.env.JAMBONES_DB_CA_CERT && fs.fileExistsSync(process.env.JAMBONES_DB_CA_CERT)) {
+    config.ssl = {
+      ca : fs.readFileSync(process.env.JAMBONES_DB_CA_CERT)
+    };
+  }
+
+  // create new Sequelize connection
+  const pool = new Sequelize(database, user, password, config);
+
+  pool.promise = () => pool;
+  pool.execute = () => pool.query;
+
   if (process.env.JAMBONES_MYSQL_WRITE_HOST &&
     process.env.JAMBONES_MYSQL_WRITE_USER &&
     process.env.JAMBONES_MYSQL_WRITE_PASSWORD &&
     process.env.JAMBONES_MYSQL_WRITE_DATABASE) {
-    writeConfiguration = {
+    const user = process.env.JAMBONES_MYSQL_WRITE_USER;
+    const password = process.env.JAMBONES_MYSQL_WRITE_PASSWORD;
+    const database = process.env.JAMBONES_MYSQL_WRITE_DATABASE;
+    const writeConfiguration = {
       host: process.env.JAMBONES_MYSQL_WRITE_HOST,
+      dialect: 'mysql',
       port: process.env.JAMBONES_MYSQL_WRITE_PORT || 3306,
-      user: process.env.JAMBONES_MYSQL_WRITE_USER,
-      password: process.env.JAMBONES_MYSQL_WRITE_PASSWORD,
-      database: process.env.JAMBONES_MYSQL_WRITE_DATABASE,
-      connectionLimit: process.env.JAMBONES_MYSQL_WRITE_CONNECTION_LIMIT || 10
+      pool: {
+        max: process.env.JAMBONES_MYSQL_WRITE_CONNECTION_LIMIT || 10,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+      }
     };
+    // create new Sequelize connection for write pool
+    writePool = new Sequelize(database, user, password, writeConfiguration);
+    // test connection to database write pool
+    writePool.authenticate().catch((err) => { throw err; });
   }
-  if (writeMysqlConfig) {
-    writePool = mysql.createPool(writeConfiguration);
-    writePool.getConnection((err, conn) => {
-      if (err) throw err;
-      conn.ping((err) => {
-        if (err) return logger.error(err, `Error pinging mysql at ${JSON.stringify(writeConfiguration)}`);
-      });
-    });
+
+  if (process.env.JAMBONES_POSTGRES_WRITE_HOST &&
+    process.env.JAMBONES_POSTGRES_WRITE_USER &&
+    process.env.JAMBONES_POSTGRES_WRITE_PASSWORD &&
+    process.env.JAMBONES_POSTGRES_WRITE_DATABASE) {
+    const user = process.env.JAMBONES_POSTGRES_WRITE_USER;
+    const password = process.env.JAMBONES_POSTGRES_WRITE_PASSWORD;
+    const database = process.env.JAMBONES_POSTGRES_WRITE_DATABASE;
+    const writeConfiguration = {
+      host: process.env.JAMBONES_POSTGRES_WRITE_HOST,
+      dialect: 'postgres',
+      port: process.env.JAMBONES_POSTGRES_WRITE_PORT || 3306,
+      pool: {
+        max: process.env.JAMBONES_POSTGRES_WRITE_CONNECTION_LIMIT || 10,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+      }
+    };
+    // create new Sequelize connection for write pool
+    writePool = new Sequelize(database, user, password, writeConfiguration);
+    // test connection to database write pool
+    writePool.authenticate().catch((err) => { throw err; });
   }
+
+
   // Cache activation for read only.
-  if (process.env.JAMBONES_MYSQL_REFRESH_TTL)
+  if (process.env.JAMBONES_DB_REFRESH_TTL)
     cacheActivator.activate(pool);
 
   logger = logger || {info: () => {}, error: () => {}, debug: () => {}};
-  pool.getConnection((err, conn) => {
-    if (err) throw err;
-    conn.ping((err) => {
-      if (err) return logger.error(err, `Error pinging mysql at ${JSON.stringify(mysqlConfig)}`);
-    });
-  });
+
+  // test connection to the database
+  pool.authenticate().catch((err) => { throw err; });
 
   return {
     pool,

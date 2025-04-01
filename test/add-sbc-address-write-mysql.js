@@ -1,7 +1,8 @@
 const test = require('tape').test ;
 const config = require('config');
-const mysqlOpts = config.get('mysql');
-const writeMysqlOpts = config.get('write-mysql');
+const dialect = process.env.JAMBONES_DB_DIALECT  || 'mysql';
+const mysqlOpts = config.get(dialect);
+const writeMysqlOpts = config.get(`write-${dialect}`);
 
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
