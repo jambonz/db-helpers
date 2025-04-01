@@ -90,6 +90,7 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null)  {
     lookupCarrierByAccountLcr: require('./lib/lookup-carrier-by-account-lcr').bind(null, pool, logger),
     lookupOutboundCarrierForAccount: require('./lib/lookup-outbound-carrier-for-account').bind(null, pool, logger),
     lookupClientByAccountAndUsername: require('./lib/lookup-client-by-account-username').bind(null, pool, logger),
-    lookupSystemInformation: require('./lib/lookup-system-information').bind(null, pool, logger)
+    lookupSystemInformation: require('./lib/lookup-system-information').bind(null, pool, logger),
+    updateCarrierBySid: require('./lib/update-carrier-by-sid').bind(null, pool, logger)
   };
 };
