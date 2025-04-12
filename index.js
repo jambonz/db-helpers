@@ -2,7 +2,7 @@ const mysql = require('mysql2');
 const cacheActivator = require('./lib/cache-activator');
 const fs = require('fs');
 
-const pingDb = async (pool) => {
+const pingDb = async(pool) => {
   return new Promise((resolve, reject) => {
     pool.getConnection((err, conn) => {
       if (err) return reject(err);
@@ -15,20 +15,20 @@ const pingDb = async (pool) => {
   });
 };
 
-module.exports = function (mysqlConfig, logger, writeMysqlConfig = null) {
+module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
   // Get SSL configuration from environment variables
   const rejectUnauthorized = process.env.JAMBONES_MYSQL_REJECT_UNAUTHORIZED;
   const ssl_ca_file = process.env.JAMBONES_MYSQL_SSL_CA_FILE;
   const ssl_cert_file = process.env.JAMBONES_MYSQL_SSL_CERT_FILE;
   const ssl_key_file = process.env.JAMBONES_MYSQL_SSL_KEY_FILE;
   // Configure SSL if either:
-  // 1. rejectUnauthorized is explicitly set to 'false'
+  // 1. rejectUnauthorized is explicitly set to 0
   // 2. All SSL certificate files are provided (CA, cert, and key)
-  if ((rejectUnauthorized !== undefined && rejectUnauthorized.toLowerCase() === 'false') ||
+  if ((rejectUnauthorized !== undefined && rejectUnauthorized === '0') ||
     (ssl_ca_file && ssl_cert_file && ssl_key_file)) {
     mysqlConfig.ssl = {
       // Set rejectUnauthorized based on environment variable
-      rejectUnauthorized: rejectUnauthorized === 'false' ? false : true,
+      rejectUnauthorized: rejectUnauthorized === '0' ? false : true,
       // Conditionally add SSL certificate files if they exist
       // Using spread operator with short-circuit evaluation
       ...(ssl_ca_file && { ca: fs.readFileSync(ssl_ca_file) }),
@@ -36,7 +36,6 @@ module.exports = function (mysqlConfig, logger, writeMysqlConfig = null) {
       ...(ssl_key_file && { key: fs.readFileSync(ssl_key_file) })
     };
   }
-
   const pool = mysql.createPool(mysqlConfig);
   let writePool = null;
   let writeConfiguration = writeMysqlConfig;
@@ -52,11 +51,11 @@ module.exports = function (mysqlConfig, logger, writeMysqlConfig = null) {
       database: process.env.JAMBONES_MYSQL_WRITE_DATABASE,
       connectionLimit: process.env.JAMBONES_MYSQL_WRITE_CONNECTION_LIMIT || 10
     };
-    if ((rejectUnauthorized !== undefined && rejectUnauthorized.toLowerCase() === 'false') ||
+    if ((rejectUnauthorized !== undefined && rejectUnauthorized === '0') ||
       (ssl_ca_file && ssl_cert_file && ssl_key_file)) {
       writeConfiguration.ssl = {
         // Set rejectUnauthorized based on environment variable
-        rejectUnauthorized: rejectUnauthorized === 'false' ? false : true,
+        rejectUnauthorized: rejectUnauthorized === '0' ? false : true,
         // Conditionally add SSL certificate files if they exist
         // Using spread operator with short-circuit evaluation
         ...(ssl_ca_file && { ca: fs.readFileSync(ssl_ca_file) }),
