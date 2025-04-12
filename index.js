@@ -21,25 +21,11 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
   const ssl_ca_file = process.env.JAMBONES_MYSQL_SSL_CA_FILE;
   const ssl_cert_file = process.env.JAMBONES_MYSQL_SSL_CERT_FILE;
   const ssl_key_file = process.env.JAMBONES_MYSQL_SSL_KEY_FILE;
-  // Validate rejectUnauthorized value if provided
-  if (rejectUnauthorized !== undefined && !['0', '1'].includes(rejectUnauthorized)) {
-    throw new Error('JAMBONES_MYSQL_REJECT_UNAUTHORIZED must be either "0" or "1"');
-  }
-  // Add assertion for SSL configuration
   const sslFilesProvided = Boolean(ssl_ca_file && ssl_cert_file && ssl_key_file);
-  if (rejectUnauthorized === '1' && !sslFilesProvided) {
-    throw new Error('When JAMBONES_MYSQL_REJECT_UNAUTHORIZED is "1", provide all SSL certificate files');
-  }
-  // Configure SSL if either:
-  // 1. rejectUnauthorized is explicitly set to 0
-  // 2. All SSL certificate files are provided (CA, cert, and key)
-  if ((rejectUnauthorized !== undefined && rejectUnauthorized === '0') ||
-    (ssl_ca_file && ssl_cert_file && ssl_key_file)) {
+
+  if (rejectUnauthorized !== undefined || sslFilesProvided) {
     mysqlConfig.ssl = {
-      // Set rejectUnauthorized based on environment variable
-      rejectUnauthorized: rejectUnauthorized === '0' ? false : true,
-      // Conditionally add SSL certificate files if they exist
-      // Using spread operator with short-circuit evaluation
+      ...(rejectUnauthorized !== undefined && { rejectUnauthorized: rejectUnauthorized === '0' ? false : true }),
       ...(ssl_ca_file && { ca: fs.readFileSync(ssl_ca_file) }),
       ...(ssl_cert_file && { cert: fs.readFileSync(ssl_cert_file) }),
       ...(ssl_key_file && { key: fs.readFileSync(ssl_key_file) })
@@ -60,18 +46,15 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
       database: process.env.JAMBONES_MYSQL_WRITE_DATABASE,
       connectionLimit: process.env.JAMBONES_MYSQL_WRITE_CONNECTION_LIMIT || 10
     };
-    if ((rejectUnauthorized !== undefined && rejectUnauthorized === '0') ||
-      (ssl_ca_file && ssl_cert_file && ssl_key_file)) {
+    if (rejectUnauthorized !== undefined || sslFilesProvided) {
       writeConfiguration.ssl = {
-        // Set rejectUnauthorized based on environment variable
-        rejectUnauthorized: rejectUnauthorized === '0' ? false : true,
-        // Conditionally add SSL certificate files if they exist
-        // Using spread operator with short-circuit evaluation
+        ...(rejectUnauthorized !== undefined && { rejectUnauthorized: rejectUnauthorized === '0' ? false : true }),
         ...(ssl_ca_file && { ca: fs.readFileSync(ssl_ca_file) }),
         ...(ssl_cert_file && { cert: fs.readFileSync(ssl_cert_file) }),
         ...(ssl_key_file && { key: fs.readFileSync(ssl_key_file) })
       };
     }
+
   }
   if (writeMysqlConfig) {
     writePool = mysql.createPool(writeConfiguration);
