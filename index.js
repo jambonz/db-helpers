@@ -1,5 +1,6 @@
 const mysql = require('mysql2');
 const cacheActivator = require('./lib/cache-activator');
+const fs = require('fs');
 
 const pingDb = async(pool) => {
   return new Promise((resolve, reject) => {
@@ -14,7 +15,22 @@ const pingDb = async(pool) => {
   });
 };
 
-module.exports = function(mysqlConfig, logger, writeMysqlConfig = null)  {
+module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
+  // Get SSL configuration from environment variables
+  const rejectUnauthorized = process.env.JAMBONES_MYSQL_REJECT_UNAUTHORIZED;
+  const ssl_ca_file = process.env.JAMBONES_MYSQL_SSL_CA_FILE;
+  const ssl_cert_file = process.env.JAMBONES_MYSQL_SSL_CERT_FILE;
+  const ssl_key_file = process.env.JAMBONES_MYSQL_SSL_KEY_FILE;
+  const sslFilesProvided = Boolean(ssl_ca_file && ssl_cert_file && ssl_key_file);
+
+  if (rejectUnauthorized !== undefined || sslFilesProvided) {
+    mysqlConfig.ssl = {
+      ...(rejectUnauthorized !== undefined && { rejectUnauthorized: rejectUnauthorized === '0' ? false : true }),
+      ...(ssl_ca_file && { ca: fs.readFileSync(ssl_ca_file) }),
+      ...(ssl_cert_file && { cert: fs.readFileSync(ssl_cert_file) }),
+      ...(ssl_key_file && { key: fs.readFileSync(ssl_key_file) })
+    };
+  }
   const pool = mysql.createPool(mysqlConfig);
   let writePool = null;
   let writeConfiguration = writeMysqlConfig;
@@ -30,6 +46,15 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null)  {
       database: process.env.JAMBONES_MYSQL_WRITE_DATABASE,
       connectionLimit: process.env.JAMBONES_MYSQL_WRITE_CONNECTION_LIMIT || 10
     };
+    if (rejectUnauthorized !== undefined || sslFilesProvided) {
+      writeConfiguration.ssl = {
+        ...(rejectUnauthorized !== undefined && { rejectUnauthorized: rejectUnauthorized === '0' ? false : true }),
+        ...(ssl_ca_file && { ca: fs.readFileSync(ssl_ca_file) }),
+        ...(ssl_cert_file && { cert: fs.readFileSync(ssl_cert_file) }),
+        ...(ssl_key_file && { key: fs.readFileSync(ssl_key_file) })
+      };
+    }
+
   }
   if (writeMysqlConfig) {
     writePool = mysql.createPool(writeConfiguration);
@@ -44,7 +69,7 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null)  {
   if (process.env.JAMBONES_MYSQL_REFRESH_TTL)
     cacheActivator.activate(pool);
 
-  logger = logger || {info: () => {}, error: () => {}, debug: () => {}};
+  logger = logger || { info: () => { }, error: () => { }, debug: () => { } };
   pool.getConnection((err, conn) => {
     if (err) throw err;
     conn.ping((err) => {
@@ -54,7 +79,7 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null)  {
 
   return {
     pool,
-    ...(writePool && {writePool}),
+    ...(writePool && { writePool }),
     ping: pingDb.bind(null, pool),
     lookupAuthHook: require('./lib/lookup-auth-hook').bind(null, pool, logger),
     lookupSipGatewayBySignalingAddress:
