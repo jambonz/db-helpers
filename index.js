@@ -102,8 +102,7 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
     setInterval(async() => {
       try {
         await pingAllConnections(pool, mysqlConfig.connectionLimit || 10, logger);
-        if (writeMysqlConfig) {
-          const writePool = pool.writePool || pool;
+        if (writePool) {
           await pingAllConnections(writePool, writeMysqlConfig.connectionLimit || 10, logger);
         }
       } catch (err) {
