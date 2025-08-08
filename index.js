@@ -99,7 +99,6 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
   });
 
   if (process.env.JAMBONES_MYSQL_KEEP_ALIVE_INTERVAL_MS > 0) {
-    // Setup periodic ping for all connections every 4 hours
     setInterval(async() => {
       try {
         await pingAllConnections(pool, mysqlConfig.connectionLimit || 10, logger);
