@@ -15,6 +15,26 @@ const pingDb = async(pool) => {
   });
 };
 
+const pingAllConnections = async(pool, connectionLimit = 10, logger) => {
+  const promises = [];
+  // Create multiple concurrent pings to exercise different connections
+  for (let i = 0; i < connectionLimit; i++) {
+    promises.push(
+      new Promise((resolve) => {
+        pool.getConnection((err, conn) => {
+          if (err) return resolve();
+          conn.ping((pingErr) => {
+            pool.releaseConnection(conn);
+            resolve();
+          });
+        });
+      })
+    );
+  }
+  await Promise.all(promises);
+  logger.debug('Successfully pinged all pool connections');
+};
+
 module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
   // Get SSL configuration from environment variables
   const rejectUnauthorized = process.env.JAMBONES_MYSQL_REJECT_UNAUTHORIZED;
@@ -32,6 +52,7 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
     };
   }
   const pool = mysql.createPool(mysqlConfig);
+
   let writePool = null;
   let writeConfiguration = writeMysqlConfig;
   if (process.env.JAMBONES_MYSQL_WRITE_HOST &&
@@ -76,6 +97,19 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
       if (err) return logger.error(err, `Error pinging mysql at ${JSON.stringify(mysqlConfig)}`);
     });
   });
+
+  // Setup periodic ping for all connections every 4 hours
+  setInterval(async() => {
+    try {
+      await pingAllConnections(pool, mysqlConfig.connectionLimit || 10, logger);
+      if (writeMysqlConfig) {
+        const writePool = pool.writePool || pool;
+        await pingAllConnections(writePool, writeMysqlConfig.connectionLimit || 10, logger);
+      }
+    } catch (err) {
+      logger.error(err, 'Error pinging pool connections');
+    }
+  }, process.env.JAMBONES_MYSQL_KEEP_ALIVE_INTERVAL_MS || 4 * 60 * 60 * 1000); // Every 4 hours
 
   return {
     pool,
