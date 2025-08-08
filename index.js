@@ -98,18 +98,20 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
     });
   });
 
-  // Setup periodic ping for all connections every 4 hours
-  setInterval(async() => {
-    try {
-      await pingAllConnections(pool, mysqlConfig.connectionLimit || 10, logger);
-      if (writeMysqlConfig) {
-        const writePool = pool.writePool || pool;
-        await pingAllConnections(writePool, writeMysqlConfig.connectionLimit || 10, logger);
+  if (process.env.JAMBONES_MYSQL_KEEP_ALIVE_INTERVAL_MS > 0) {
+    // Setup periodic ping for all connections every 4 hours
+    setInterval(async() => {
+      try {
+        await pingAllConnections(pool, mysqlConfig.connectionLimit || 10, logger);
+        if (writeMysqlConfig) {
+          const writePool = pool.writePool || pool;
+          await pingAllConnections(writePool, writeMysqlConfig.connectionLimit || 10, logger);
+        }
+      } catch (err) {
+        logger.error(err, 'Error pinging pool connections');
       }
-    } catch (err) {
-      logger.error(err, 'Error pinging pool connections');
-    }
-  }, process.env.JAMBONES_MYSQL_KEEP_ALIVE_INTERVAL_MS || 4 * 60 * 60 * 1000); // Every 4 hours
+    }, process.env.JAMBONES_MYSQL_KEEP_ALIVE_INTERVAL_MS);
+  }
 
   return {
     pool,
