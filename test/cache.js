@@ -50,8 +50,8 @@ test('cache tests', async(t) => {
   let queryFixture;
   let allCachedMatchOriginal = true;
 
-  async function execute1000() {
-    for (let i = 0; i < 1000; i++) {
+  async function execute(count) {
+    for (let i = 0; i < count; i++) {
       const pp = pool.promise();
       const [r] = await pp.execute(`SELECT * FROM voip_carriers WHERE voip_carrier_sid = ?`, ['287c1452-620d-4195-9f19-c9814ef90d78']);
 
@@ -64,12 +64,12 @@ test('cache tests', async(t) => {
     }
   }
 
-  async function query1000() {
-    for (let i = 0; i < 1000; i++) {
+  async function query(count) {
+    for (let i = 0; i < count; i++) {
       const pp = pool.promise();
       const [r] = await pp.query(
         {sql: 'SELECT application_sid from voip_carriers where voip_carrier_sid = ?'}, 
-        ['3b43e39f-4346-4218-8434-a53130e8be49']
+        ['287c1452-620d-4195-9f19-c9814ef90d78']
       );
 
       if (!queryFixture) {
@@ -81,37 +81,56 @@ test('cache tests', async(t) => {
     }
   }
 
-  try {
-    await execute1000();
-    await query1000();
+  async function checkCache() {
+    const keys = Object.keys(cache)
+    if (keys.length != 0) {
+      keys.forEach((k) => {console.log(k, cache[k].timestamp)})
+    } else {
+      console.log('Empty Cache')
+    }
+  }
 
+  try {
+    
+    // Test 1 Basic Caching
+    //await checkCache();
+    await execute(1000);
+    await query(1000);
+    //await checkCache();
     t.ok(spies.execute.calledOnce && spies.query.calledOnce, 'calls database only 1 / 1000');
 
-    await clock.tickAsync(25000);
+    // Test 2 Cache Persistence
+    await clock.tickAsync(15000);
+    await execute(1000);
+    await query(1000);
+    t.ok(spies.execute.calledOnce && spies.query.calledOnce, 'remains in cache after 15sec');
 
-    await execute1000();
-    await query1000();
+    // Test 3 Cache Expiry
+    await clock.tickAsync(16000);
+    //await checkCache();
+    t.ok(Object.keys(cache).length === 0, 'cache items purged after TTL 30sec');
 
-    t.ok(spies.execute.calledOnce && spies.query.calledOnce, 'remains in cache after 25sec');
-
-    await clock.tickAsync(5000);
-
-    t.ok(spies.execute.calledTwice && spies.query.calledTwice, 'background refreshes from db and caches again after TTL 30sec');
+    // Test 4 Re-Cache
+    await execute(1000);
+    await query(1000);
+    //await checkCache();
+    t.ok(spies.execute.calledTwice && spies.query.calledTwice, 'Fetch from db and caches again after TTL 30sec');
+    
+    // Test 5 Cache Accuracy
     t.ok(allCachedMatchOriginal, 'all cached results match db originals');
-
-    await clock.tickAsync(10000);
-
-    await execute1000();
-    await query1000();
-
-    t.ok(spies.execute.calledTwice && spies.query.calledTwice, 'remains in cache before next TTL 30sec');
-
-    for (let i = 0; i < 2000; i++) {
-      await clock.tickAsync(25);
-    }
-
-    t.ok(Object.keys(cache).length === 0, 'cache items purged if not accessed within TTL 30sec');
-
+     
+    // Test 6 Update DB
+    const pp = pool.promise();
+    let [r] = await pp.query({sql: 'SELECT name from voip_carriers where voip_carrier_sid = ?'}, ['287c1452-620d-4195-9f19-c9814ef90d78']);
+    console.log(r[0].name)
+    t.ok(r[0].name == 'westco', 'correct value in database')
+    await pp.query({sql: 'UPDATE voip_carriers SET name = "newco" WHERE voip_carrier_sid = ?'}, ['287c1452-620d-4195-9f19-c9814ef90d78']);
+    [r] = await pp.query({sql: 'SELECT name from voip_carriers where voip_carrier_sid = ?'}, ['287c1452-620d-4195-9f19-c9814ef90d78']);
+    t.ok(r[0].name == 'westco', 'old value in cache after update')
+    await clock.tickAsync(30000);
+    [r] = await pp.query({sql: 'SELECT name from voip_carriers where voip_carrier_sid = ?'}, ['287c1452-620d-4195-9f19-c9814ef90d78']);
+    t.ok(r[0].name == 'newco', 'new value in cache after expiry')
+    await pp.query({sql: 'UPDATE voip_carriers SET name = "westco" WHERE voip_carrier_sid = ?'}, ['287c1452-620d-4195-9f19-c9814ef90d78']); //Put DB back to original
     t.end();
   }
   catch (err) {
