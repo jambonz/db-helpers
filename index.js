@@ -138,7 +138,7 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
     lookupSipGatewaysByFilters: require('./lib/lookup-sip-gateways-by-filters').bind(null, pool, logger),
     lookupSipGatewayBySid: require('./lib/lookup-sip-gateway-by-sid').bind(null, pool, logger),
     lookupSipGatewaysByCarrier: require('./lib/lookup-sip-gateways-by-carrier').bind(null, pool, logger),
-    updateSipGatewayBySid: require('./lib/update-sip-gateway-by-sid').bind(null, pool, logger),
+    updateSipGatewayBySid: require('./lib/update-sip-gateway-by-sid').bind(null, writePool ?? pool, logger),
     lookupSmppGatewayBySid: require('./lib/lookup-smpp-gateway-by-sid').bind(null, pool, logger),
     lookupSmppGateways: require('./lib/lookup-smpp-gateways').bind(null, pool, logger),
     lookupSmppGatewaysByBindCredentials:
@@ -150,7 +150,7 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
     lookupOutboundCarrierForAccount: require('./lib/lookup-outbound-carrier-for-account').bind(null, pool, logger),
     lookupClientByAccountAndUsername: require('./lib/lookup-client-by-account-username').bind(null, pool, logger),
     lookupSystemInformation: require('./lib/lookup-system-information').bind(null, pool, logger),
-    updateCarrierBySid: require('./lib/update-carrier-by-sid').bind(null, pool, logger),
+    updateCarrierBySid: require('./lib/update-carrier-by-sid').bind(null, writePool ?? pool, logger),
     lookupLcrByAccount: require('./lib/lookup-account-lcr').bind(null, pool, logger)
   };
 };
