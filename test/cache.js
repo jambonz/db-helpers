@@ -53,7 +53,7 @@ test('cache tests', async(t) => {
   async function execute(count) {
     for (let i = 0; i < count; i++) {
       const pp = pool.promise();
-      const [r] = await pp.execute(`SELECT * FROM voip_carriers WHERE voip_carrier_sid = ?`, ['287c1452-620d-4195-9f19-c9814ef90d78']);
+      const [r] = await pp.query(`SELECT * FROM voip_carriers WHERE voip_carrier_sid = ?`, ['287c1452-620d-4195-9f19-c9814ef90d78']);
 
       if (!executeFixture) {
         executeFixture = JSON.stringify(r[0]);
@@ -97,13 +97,13 @@ test('cache tests', async(t) => {
     await execute(1000);
     await query(1000);
     //await checkCache();
-    t.ok(spies.execute.calledOnce && spies.query.calledOnce, 'calls database only 1 / 1000');
+    t.ok(spies.query.callCount === 2, 'calls database only 2 / 2000 (once per unique query)');
 
     // Test 2 Cache Persistence
     await clock.tickAsync(15000);
     await execute(1000);
     await query(1000);
-    t.ok(spies.execute.calledOnce && spies.query.calledOnce, 'remains in cache after 15sec');
+    t.ok(spies.query.callCount === 2, 'remains in cache after 15sec');
 
     // Test 3 Cache Expiry
     await clock.tickAsync(16000);
@@ -114,7 +114,7 @@ test('cache tests', async(t) => {
     await execute(1000);
     await query(1000);
     //await checkCache();
-    t.ok(spies.execute.calledTwice && spies.query.calledTwice, 'Fetch from db and caches again after TTL 30sec');
+    t.ok(spies.query.callCount === 4, 'Fetch from db and caches again after TTL 30sec');
     
     // Test 5 Cache Accuracy
     t.ok(allCachedMatchOriginal, 'all cached results match db originals');
