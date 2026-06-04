@@ -18,11 +18,15 @@ DROP TABLE IF EXISTS clients;
 
 DROP TABLE IF EXISTS dns_records;
 
+DROP TABLE IF EXISTS krisp_usage;
+
 DROP TABLE IF EXISTS lcr;
 
 DROP TABLE IF EXISTS lcr_carrier_set_entry;
 
 DROP TABLE IF EXISTS lcr_routes;
+
+DROP TABLE IF EXISTS license_archive;
 
 DROP TABLE IF EXISTS password_settings;
 
@@ -51,6 +55,8 @@ DROP TABLE IF EXISTS ms_teams_tenants;
 DROP TABLE IF EXISTS service_provider_limits;
 
 DROP TABLE IF EXISTS signup_history;
+
+DROP TABLE IF EXISTS llm_credentials;
 
 DROP TABLE IF EXISTS smpp_addresses;
 
@@ -154,6 +160,13 @@ record_id INTEGER NOT NULL,
 PRIMARY KEY (dns_record_sid)
 );
 
+CREATE TABLE krisp_usage
+(
+day DATE NOT NULL,
+feature VARCHAR(32) NOT NULL,
+usage_seconds INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE lcr_routes
 (
 lcr_route_sid CHAR(36),
@@ -162,7 +175,7 @@ regex VARCHAR(32) NOT NULL COMMENT 'regex-based pattern match against dialed num
 description VARCHAR(1024),
 priority INTEGER NOT NULL COMMENT 'lower priority routes are attempted first',
 PRIMARY KEY (lcr_route_sid)
-) COMMENT='An ordered list of  digit patterns in an LCR table.  The patterns are tested in sequence until one matches';
+) COMMENT='An ordered list of  digit patterns in an LCR table.  The pat';
 
 CREATE TABLE lcr
 (
@@ -173,7 +186,19 @@ default_carrier_set_entry_sid CHAR(36) COMMENT 'default carrier/route to use whe
 service_provider_sid CHAR(36),
 account_sid CHAR(36),
 PRIMARY KEY (lcr_sid)
-) COMMENT='An LCR (least cost routing) table that is used by a service provider or account to make decisions about routing outbound calls when multiple carriers are available.';
+) COMMENT='An LCR (least cost routing) table that is used by a service ';
+
+CREATE TABLE license_archive
+(
+license_archive_sid CHAR(36) NOT NULL UNIQUE ,
+license_key VARCHAR(2048) NOT NULL,
+archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+domain_name VARCHAR(255),
+session_count INTEGER,
+expiration_date VARCHAR(10),
+archive_reason VARCHAR(64),
+PRIMARY KEY (license_archive_sid)
+);
 
 CREATE TABLE password_settings
 (
@@ -204,6 +229,7 @@ tech_prefix VARCHAR(16) COMMENT 'tech prefix to prepend to outbound calls to thi
 inbound_auth_username VARCHAR(64),
 inbound_auth_password VARCHAR(64),
 diversion VARCHAR(32),
+trunk_type ENUM('static_ip','auth','reg') NOT NULL DEFAULT 'static_ip',
 PRIMARY KEY (predefined_carrier_sid)
 );
 
@@ -315,6 +341,19 @@ signed_up_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 PRIMARY KEY (email)
 );
 
+CREATE TABLE llm_credentials
+(
+llm_credential_sid CHAR(36) NOT NULL UNIQUE ,
+service_provider_sid CHAR(36),
+account_sid CHAR(36),
+vendor VARCHAR(32) NOT NULL,
+credential VARCHAR(8192) NOT NULL,
+created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+label VARCHAR(64),
+tested_ok BOOLEAN DEFAULT 0,
+PRIMARY KEY (llm_credential_sid)
+);
+
 CREATE TABLE smpp_addresses
 (
 smpp_address_sid CHAR(36) NOT NULL UNIQUE ,
@@ -351,6 +390,8 @@ speech_credential_sid CHAR(36) NOT NULL,
 model VARCHAR(512) NOT NULL,
 reported_usage ENUM('REPORTED_USAGE_UNSPECIFIED','REALTIME','OFFLINE') DEFAULT 'REALTIME',
 name VARCHAR(64) NOT NULL,
+voice_cloning_key MEDIUMTEXT,
+use_voice_cloning_key BOOLEAN DEFAULT false,
 PRIMARY KEY (google_custom_voice_sid)
 );
 
@@ -358,7 +399,11 @@ CREATE TABLE system_information
 (
 domain_name VARCHAR(255),
 sip_domain_name VARCHAR(255),
-monitoring_domain_name VARCHAR(255)
+monitoring_domain_name VARCHAR(255),
+private_network_cidr VARCHAR(8192),
+log_level ENUM('info', 'debug') NOT NULL DEFAULT 'info',
+license_key VARCHAR(2048),
+license_key_installed DATETIME
 );
 
 CREATE TABLE users
@@ -412,6 +457,9 @@ register_from_user VARCHAR(128),
 register_from_domain VARCHAR(255),
 register_public_ip_in_contact BOOLEAN NOT NULL DEFAULT false,
 register_status VARCHAR(4096),
+dtmf_type ENUM('rfc2833','tones','info') NOT NULL DEFAULT 'rfc2833',
+outbound_sip_proxy VARCHAR(255),
+trunk_type ENUM('static_ip','auth','reg') NOT NULL DEFAULT 'static_ip',
 PRIMARY KEY (voip_carrier_sid)
 ) COMMENT='A Carrier or customer PBX that can send or receive calls';
 
@@ -459,8 +507,11 @@ outbound BOOLEAN NOT NULL COMMENT 'if true, include in least-cost routing when p
 voip_carrier_sid CHAR(36) NOT NULL,
 is_active BOOLEAN NOT NULL DEFAULT 1,
 send_options_ping BOOLEAN NOT NULL DEFAULT 0,
+use_sips_scheme BOOLEAN NOT NULL DEFAULT 0,
 pad_crypto BOOLEAN NOT NULL DEFAULT 0,
 protocol ENUM('udp','tcp','tls', 'tls/srtp') DEFAULT 'udp' COMMENT 'Outbound call protocol',
+remove_ice BOOLEAN NOT NULL DEFAULT 0,
+dtls_off BOOLEAN NOT NULL DEFAULT 0,
 PRIMARY KEY (sip_gateway_sid)
 ) COMMENT='A whitelisted sip gateway used for origination/termination';
 
@@ -496,7 +547,7 @@ messaging_hook_sid CHAR(36) COMMENT 'webhook to call for inbound SMS/MMS ',
 app_json TEXT,
 speech_synthesis_vendor VARCHAR(64) NOT NULL DEFAULT 'google',
 speech_synthesis_language VARCHAR(12) NOT NULL DEFAULT 'en-US',
-speech_synthesis_voice VARCHAR(64),
+speech_synthesis_voice VARCHAR(256) DEFAULT 'en-US-Standard-C',
 speech_synthesis_label VARCHAR(64),
 speech_recognizer_vendor VARCHAR(64) NOT NULL DEFAULT 'google',
 speech_recognizer_language VARCHAR(64) NOT NULL DEFAULT 'en-US',
@@ -504,13 +555,15 @@ speech_recognizer_label VARCHAR(64),
 use_for_fallback_speech BOOLEAN DEFAULT false,
 fallback_speech_synthesis_vendor VARCHAR(64),
 fallback_speech_synthesis_language VARCHAR(12),
-fallback_speech_synthesis_voice VARCHAR(64),
+fallback_speech_synthesis_voice VARCHAR(256),
 fallback_speech_synthesis_label VARCHAR(64),
 fallback_speech_recognizer_vendor VARCHAR(64),
 fallback_speech_recognizer_language VARCHAR(64),
 fallback_speech_recognizer_label VARCHAR(64),
+env_vars TEXT,
 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 record_all_calls BOOLEAN NOT NULL DEFAULT false,
+observability_level ENUM('disabled','recording','full'),
 PRIMARY KEY (application_sid)
 ) COMMENT='A defined set of behaviors to be applied to phone calls ';
 
@@ -549,8 +602,10 @@ subspace_sip_teleport_id VARCHAR(255),
 subspace_sip_teleport_destinations VARCHAR(255),
 siprec_hook_sid CHAR(36),
 record_all_calls BOOLEAN NOT NULL DEFAULT false,
+observability_level ENUM('disabled','recording','full') NOT NULL DEFAULT 'disabled',
 record_format VARCHAR(16) NOT NULL DEFAULT 'mp3',
 bucket_credential VARCHAR(8192) COMMENT 'credential used to authenticate with storage service',
+enable_debug_log BOOLEAN NOT NULL DEFAULT false,
 PRIMARY KEY (account_sid)
 ) COMMENT='An enterprise that uses the platform for comm services';
 
@@ -572,10 +627,12 @@ ALTER TABLE call_routes ADD FOREIGN KEY account_sid_idxfk_3 (account_sid) REFERE
 ALTER TABLE call_routes ADD FOREIGN KEY application_sid_idxfk (application_sid) REFERENCES applications (application_sid);
 
 CREATE INDEX client_sid_idx ON clients (client_sid);
-ALTER TABLE clients ADD CONSTRAINT account_sid_idxfk_13 FOREIGN KEY account_sid_idxfk_13 (account_sid) REFERENCES accounts (account_sid);
+ALTER TABLE clients ADD CONSTRAINT account_sid_idxfk_101 FOREIGN KEY account_sid_idxfk_101 (account_sid) REFERENCES accounts (account_sid);
 
 CREATE INDEX dns_record_sid_idx ON dns_records (dns_record_sid);
 ALTER TABLE dns_records ADD FOREIGN KEY account_sid_idxfk_4 (account_sid) REFERENCES accounts (account_sid);
+
+CREATE UNIQUE INDEX krisp_usage_idx_1 ON krisp_usage (day,feature);
 
 CREATE INDEX lcr_sid_idx ON lcr_routes (lcr_sid);
 ALTER TABLE lcr_routes ADD FOREIGN KEY lcr_sid_idxfk (lcr_sid) REFERENCES lcr (lcr_sid);
@@ -585,6 +642,7 @@ ALTER TABLE lcr ADD FOREIGN KEY default_carrier_set_entry_sid_idxfk (default_car
 
 CREATE INDEX service_provider_sid_idx ON lcr (service_provider_sid);
 CREATE INDEX account_sid_idx ON lcr (account_sid);
+CREATE INDEX license_archive_sid_idx ON license_archive (license_archive_sid);
 CREATE INDEX permission_sid_idx ON permissions (permission_sid);
 CREATE INDEX predefined_carrier_sid_idx ON predefined_carriers (predefined_carrier_sid);
 CREATE INDEX predefined_sip_gateway_sid_idx ON predefined_sip_gateways (predefined_sip_gateway_sid);
@@ -616,7 +674,7 @@ ALTER TABLE api_keys ADD FOREIGN KEY account_sid_idxfk_6 (account_sid) REFERENCE
 CREATE INDEX service_provider_sid_idx ON api_keys (service_provider_sid);
 ALTER TABLE api_keys ADD FOREIGN KEY service_provider_sid_idxfk (service_provider_sid) REFERENCES service_providers (service_provider_sid);
 
-CREATE INDEX sbc_addresses_idx_host_port ON sbc_addresses (ipv4,port);
+CREATE UNIQUE INDEX sbc_addresses_idx_host_port ON sbc_addresses (ipv4,port);
 
 CREATE INDEX sbc_address_sid_idx ON sbc_addresses (sbc_address_sid);
 CREATE INDEX service_provider_sid_idx ON sbc_addresses (service_provider_sid);
@@ -634,16 +692,24 @@ CREATE INDEX service_provider_sid_idx ON service_provider_limits (service_provid
 ALTER TABLE service_provider_limits ADD FOREIGN KEY service_provider_sid_idxfk_3 (service_provider_sid) REFERENCES service_providers (service_provider_sid) ON DELETE CASCADE;
 
 CREATE INDEX email_idx ON signup_history (email);
+
+CREATE INDEX llm_credential_sid_idx ON llm_credentials (llm_credential_sid);
+CREATE INDEX service_provider_sid_idx ON llm_credentials (service_provider_sid);
+ALTER TABLE llm_credentials ADD FOREIGN KEY service_provider_sid_idxfk_4 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
+
+CREATE INDEX account_sid_idx ON llm_credentials (account_sid);
+ALTER TABLE llm_credentials ADD FOREIGN KEY account_sid_idxfk_8 (account_sid) REFERENCES accounts (account_sid);
+
 CREATE INDEX smpp_address_sid_idx ON smpp_addresses (smpp_address_sid);
 CREATE INDEX service_provider_sid_idx ON smpp_addresses (service_provider_sid);
-ALTER TABLE smpp_addresses ADD FOREIGN KEY service_provider_sid_idxfk_4 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
+ALTER TABLE smpp_addresses ADD FOREIGN KEY service_provider_sid_idxfk_5 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
 
 CREATE INDEX speech_credential_sid_idx ON speech_credentials (speech_credential_sid);
 CREATE INDEX service_provider_sid_idx ON speech_credentials (service_provider_sid);
-ALTER TABLE speech_credentials ADD FOREIGN KEY service_provider_sid_idxfk_5 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
+ALTER TABLE speech_credentials ADD FOREIGN KEY service_provider_sid_idxfk_6 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
 
 CREATE INDEX account_sid_idx ON speech_credentials (account_sid);
-ALTER TABLE speech_credentials ADD FOREIGN KEY account_sid_idxfk_8 (account_sid) REFERENCES accounts (account_sid);
+ALTER TABLE speech_credentials ADD FOREIGN KEY account_sid_idxfk_9 (account_sid) REFERENCES accounts (account_sid);
 
 CREATE INDEX google_custom_voice_sid_idx ON google_custom_voices (google_custom_voice_sid);
 CREATE INDEX speech_credential_sid_idx ON google_custom_voices (speech_credential_sid);
@@ -653,18 +719,18 @@ CREATE INDEX user_sid_idx ON users (user_sid);
 CREATE INDEX email_idx ON users (email);
 CREATE INDEX phone_idx ON users (phone);
 CREATE INDEX account_sid_idx ON users (account_sid);
-ALTER TABLE users ADD FOREIGN KEY account_sid_idxfk_9 (account_sid) REFERENCES accounts (account_sid);
+ALTER TABLE users ADD FOREIGN KEY account_sid_idxfk_10 (account_sid) REFERENCES accounts (account_sid);
 
 CREATE INDEX service_provider_sid_idx ON users (service_provider_sid);
-ALTER TABLE users ADD FOREIGN KEY service_provider_sid_idxfk_6 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
+ALTER TABLE users ADD FOREIGN KEY service_provider_sid_idxfk_7 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
 
 CREATE INDEX email_activation_code_idx ON users (email_activation_code);
 CREATE INDEX voip_carrier_sid_idx ON voip_carriers (voip_carrier_sid);
 CREATE INDEX account_sid_idx ON voip_carriers (account_sid);
-ALTER TABLE voip_carriers ADD FOREIGN KEY account_sid_idxfk_10 (account_sid) REFERENCES accounts (account_sid);
+ALTER TABLE voip_carriers ADD FOREIGN KEY account_sid_idxfk_11 (account_sid) REFERENCES accounts (account_sid);
 
 CREATE INDEX service_provider_sid_idx ON voip_carriers (service_provider_sid);
-ALTER TABLE voip_carriers ADD FOREIGN KEY service_provider_sid_idxfk_7 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
+ALTER TABLE voip_carriers ADD FOREIGN KEY service_provider_sid_idxfk_8 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
 
 ALTER TABLE voip_carriers ADD FOREIGN KEY application_sid_idxfk_2 (application_sid) REFERENCES applications (application_sid);
 
@@ -685,14 +751,20 @@ CREATE INDEX number_idx ON phone_numbers (number);
 CREATE INDEX voip_carrier_sid_idx ON phone_numbers (voip_carrier_sid);
 ALTER TABLE phone_numbers ADD FOREIGN KEY voip_carrier_sid_idxfk_1 (voip_carrier_sid) REFERENCES voip_carriers (voip_carrier_sid);
 
-ALTER TABLE phone_numbers ADD FOREIGN KEY account_sid_idxfk_11 (account_sid) REFERENCES accounts (account_sid);
+ALTER TABLE phone_numbers ADD FOREIGN KEY account_sid_idxfk_12 (account_sid) REFERENCES accounts (account_sid);
 
 ALTER TABLE phone_numbers ADD FOREIGN KEY application_sid_idxfk_3 (application_sid) REFERENCES applications (application_sid);
 
 CREATE INDEX service_provider_sid_idx ON phone_numbers (service_provider_sid);
-ALTER TABLE phone_numbers ADD FOREIGN KEY service_provider_sid_idxfk_8 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
+ALTER TABLE phone_numbers ADD FOREIGN KEY service_provider_sid_idxfk_9 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
 
 CREATE INDEX sip_gateway_idx_hostport ON sip_gateways (ipv4,port);
+
+CREATE INDEX idx_sip_gateways_inbound_carrier ON sip_gateways (inbound,voip_carrier_sid);
+
+CREATE INDEX idx_sip_gateways_inbound_lookup ON sip_gateways (inbound,netmask,ipv4);
+
+CREATE INDEX idx_sip_gateways_inbound_netmask ON sip_gateways (inbound,netmask);
 
 CREATE INDEX voip_carrier_sid_idx ON sip_gateways (voip_carrier_sid);
 ALTER TABLE sip_gateways ADD FOREIGN KEY voip_carrier_sid_idxfk_2 (voip_carrier_sid) REFERENCES voip_carriers (voip_carrier_sid);
@@ -706,10 +778,10 @@ CREATE UNIQUE INDEX applications_idx_name ON applications (account_sid,name);
 
 CREATE INDEX application_sid_idx ON applications (application_sid);
 CREATE INDEX service_provider_sid_idx ON applications (service_provider_sid);
-ALTER TABLE applications ADD FOREIGN KEY service_provider_sid_idxfk_9 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
+ALTER TABLE applications ADD FOREIGN KEY service_provider_sid_idxfk_10 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
 
 CREATE INDEX account_sid_idx ON applications (account_sid);
-ALTER TABLE applications ADD FOREIGN KEY account_sid_idxfk_12 (account_sid) REFERENCES accounts (account_sid);
+ALTER TABLE applications ADD FOREIGN KEY account_sid_idxfk_13 (account_sid) REFERENCES accounts (account_sid);
 
 ALTER TABLE applications ADD FOREIGN KEY call_hook_sid_idxfk (call_hook_sid) REFERENCES webhooks (webhook_sid);
 
@@ -725,7 +797,7 @@ ALTER TABLE service_providers ADD FOREIGN KEY registration_hook_sid_idxfk (regis
 CREATE INDEX account_sid_idx ON accounts (account_sid);
 CREATE INDEX sip_realm_idx ON accounts (sip_realm);
 CREATE INDEX service_provider_sid_idx ON accounts (service_provider_sid);
-ALTER TABLE accounts ADD FOREIGN KEY service_provider_sid_idxfk_10 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
+ALTER TABLE accounts ADD FOREIGN KEY service_provider_sid_idxfk_11 (service_provider_sid) REFERENCES service_providers (service_provider_sid);
 
 ALTER TABLE accounts ADD FOREIGN KEY registration_hook_sid_idxfk_1 (registration_hook_sid) REFERENCES webhooks (webhook_sid);
 

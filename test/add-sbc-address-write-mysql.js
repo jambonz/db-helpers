@@ -19,15 +19,14 @@ test('add sbc address tests', async(t) => {
     t.ok(first.wss_port === 5080, 'sbc address wss_port is added');
 
     await new Promise(resolve => setTimeout(resolve, 1000));
-    await addSbcAddress('3.3.3.3', 5070, 5083, 5084);
+    // Same IP and port is silently ignored (INSERT IGNORE)
+    await addSbcAddress('3.3.3.3', 5060, 5083, 5084);
 
     const [second] = await lookUpSbcAddressesbyIpv4('3.3.3.3');
-    t.ok(second.port === 5070, 'sbc address port is updated');
-    t.ok(second.tls_port === 5083, 'sbc address tls_port is updated');
-    t.ok(second.wss_port === 5084, 'sbc address wss_port is updated');
-    t.pass('no need to add if it exists');
-    const [readd] = await lookUpSbcAddressesbyIpv4('3.3.3.3')
-    t.ok(readd.last_updated > first.last_updated, "last_updated is updated");
+    t.ok(second.port === 5060, 'sbc address port unchanged');
+    t.ok(second.tls_port === 5070, 'sbc address tls_port unchanged (INSERT IGNORE)');
+    t.ok(second.wss_port === 5080, 'sbc address wss_port unchanged (INSERT IGNORE)');
+    t.pass('duplicate insert silently ignored');
 
     process.env.DEAD_SBC_IN_SECOND = 1;
     await new Promise(resolve => setTimeout(resolve, 2000));
