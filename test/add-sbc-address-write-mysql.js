@@ -9,7 +9,7 @@ process.on('unhandledRejection', (reason, p) => {
 
 test('add sbc address tests', async(t) => {
   const fn = require('..');
-  const {addSbcAddress, addSmppAddress, lookUpSbcAddressesbyIpv4, cleanSbcAddresses} = fn(mysqlOpts, null, writeMysqlOpts);
+  const {addSbcAddress, lookUpSbcAddressesbyIpv4, cleanSbcAddresses} = fn(mysqlOpts, null, writeMysqlOpts);
   try {
     await addSbcAddress('3.3.3.3', 5060, 5070, 5080);
     t.pass('added sbc address');
@@ -34,12 +34,6 @@ test('add sbc address tests', async(t) => {
     const cleanSbc = await lookUpSbcAddressesbyIpv4('3.3.3.3');
     t.ok(cleanSbc.length == 0, "Successfully clean up SBC address");
     process.env.DEAD_SBC_IN_SECOND = null;
-
-    await addSmppAddress('3.3.3.3');
-    t.pass('added smpp address');
-
-    await addSmppAddress('3.3.3.3');
-    t.pass('no need to add if it exists');
 
     t.end();
   }

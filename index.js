@@ -130,7 +130,6 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
     addSbcAddress: require('./lib/add-sbc-address').bind(null, writePool ?? pool, logger),
     lookUpSbcAddressesbyIpv4: require('./lib/lookup-sbc-address-by-ipv4').bind(null, pool, logger),
     cleanSbcAddresses: require('./lib/clean-sbc-addresses').bind(null, writePool ?? pool, logger),
-    addSmppAddress: require('./lib/add-smpp-address').bind(null, writePool ?? pool, logger),
     lookupAllTeamsFQDNs: require('./lib/lookup-all-teams-fqdns').bind(null, pool, logger),
     lookupTeamsByAccount: require('./lib/lookup-teams-by-account').bind(null, pool, logger),
     lookupAllVoipCarriers: require('./lib/lookup-all-voip-carriers').bind(null, pool, logger),
@@ -139,10 +138,6 @@ module.exports = function(mysqlConfig, logger, writeMysqlConfig = null) {
     lookupSipGatewayBySid: require('./lib/lookup-sip-gateway-by-sid').bind(null, pool, logger),
     lookupSipGatewaysByCarrier: require('./lib/lookup-sip-gateways-by-carrier').bind(null, pool, logger),
     updateSipGatewayBySid: require('./lib/update-sip-gateway-by-sid').bind(null, writePool ?? pool, logger),
-    lookupSmppGatewayBySid: require('./lib/lookup-smpp-gateway-by-sid').bind(null, pool, logger),
-    lookupSmppGateways: require('./lib/lookup-smpp-gateways').bind(null, pool, logger),
-    lookupSmppGatewaysByBindCredentials:
-      require('./lib/lookup-smpp-gateways-by-bind-credentials').bind(null, pool, logger),
     queryCallLimits: require('./lib/query-call-limits').bind(null, pool, logger),
     updateVoipCarriersRegisterStatus:
       require('./lib/update-carrier-register-status-by-sid').bind(null, writePool ?? pool, logger),
