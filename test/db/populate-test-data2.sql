@@ -20,11 +20,8 @@ values ('88191aa4-fff2-4c64-b005-43414a8e94d7', '387c1452-620d-4195-9f19-c9814ef
 insert into voip_carriers (voip_carrier_sid, name, account_sid, service_provider_sid, e164_leading_plus) values ('287c1452-620d-4195-9f19-c9814ef90d78', 'westco', 'ee9d7d49-b3e4-4fdb-9d66-661149f717e8', '3f35518f-5a0d-4c2e-90a5-2407bb3b36f0', 1);
 insert into voip_carriers (voip_carrier_sid, name, account_sid, service_provider_sid) values ('ceafc86d-11f3-4dbd-9523-1e0f4502bfc7', 'eastco', 'ee9d7d49-b3e4-4fdb-9d66-661149f717e8', '3f35518f-5a0d-4c2e-90a5-2407bb3b36f0');
 insert into voip_carriers (voip_carrier_sid, name, account_sid, service_provider_sid) values ('64035d77-f735-4b19-9dc1-15f8cf44636c', 'southco', 'ee9d7d49-b3e4-4fdb-9d66-661149f717e8', '3f35518f-5a0d-4c2e-90a5-2407bb3b36f0');
-insert into voip_carriers (voip_carrier_sid, name, account_sid, smpp_system_id, smpp_password, smpp_enquire_link_interval, smpp_inbound_system_id, smpp_inbound_password) 
-values ('53128ee1-a5f9-4542-8129-c6b1292728ec', 'northco', 'ee9d7d49-b3e4-4fdb-9d66-661149f717e8', 'my-service-id', 'my-password', 60, 'challenge-system-id', 'challenge-password');
-
-insert into smpp_gateways (smpp_gateway_sid, voip_carrier_sid, ipv4, port, is_primary, use_tls) values ('cd4d2c9f-a5d8-4a4a-9bee-ab3e23c9c514', '53128ee1-a5f9-4542-8129-c6b1292728ec', '10.10.10.1', 2775, 1, 0);
-insert into smpp_gateways (smpp_gateway_sid, voip_carrier_sid, ipv4, port, is_primary, use_tls) values ('e38c7036-a4d7-4604-9625-fdadbf88748d', '53128ee1-a5f9-4542-8129-c6b1292728ec', '10.10.10.2', 2775, 0, 0);
+insert into voip_carriers (voip_carrier_sid, name, account_sid)
+values ('53128ee1-a5f9-4542-8129-c6b1292728ec', 'northco', 'ee9d7d49-b3e4-4fdb-9d66-661149f717e8');
 
 -- westco gateways
 insert into sip_gateways (sip_gateway_sid, voip_carrier_sid, ipv4, inbound, outbound) 
