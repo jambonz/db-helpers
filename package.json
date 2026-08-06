@@ -23,7 +23,7 @@
     "cidr-matcher": "^2.1.1",
     "mysql2": "^3.11.0",
     "node-object-hash": "^2.3.10",
-    "uuid": "^8.3.2"
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@sinonjs/fake-timers": "^9.1.2",
