@@ -18,15 +18,23 @@ test('add sbc address tests', async(t) => {
     t.ok(first.tls_port === 5070, 'sbc address tls_port is added');
     t.ok(first.wss_port === 5080, 'sbc address wss_port is added');
 
+    const firstUpdated = new Date(first.last_updated).getTime();
+
     await new Promise(resolve => setTimeout(resolve, 1000));
-    // Same IP and port is silently ignored (INSERT IGNORE)
+    /* re-registering the same ipv4/port must refresh the existing row rather
+       than create a second one: this call IS the SBC keepalive, and
+       cleanSbcAddresses() reaps rows whose last_updated has gone stale */
     await addSbcAddress('3.3.3.3', 5060, 5083, 5084);
 
-    const [second] = await lookUpSbcAddressesbyIpv4('3.3.3.3');
+    const rows = await lookUpSbcAddressesbyIpv4('3.3.3.3');
+    t.ok(rows.length === 1, 'no duplicate row created');
+    const [second] = rows;
+    t.ok(second.sbc_address_sid === first.sbc_address_sid, 'existing row was updated in place');
     t.ok(second.port === 5060, 'sbc address port unchanged');
-    t.ok(second.tls_port === 5070, 'sbc address tls_port unchanged (INSERT IGNORE)');
-    t.ok(second.wss_port === 5080, 'sbc address wss_port unchanged (INSERT IGNORE)');
-    t.pass('duplicate insert silently ignored');
+    t.ok(second.tls_port === 5083, 'sbc address tls_port refreshed');
+    t.ok(second.wss_port === 5084, 'sbc address wss_port refreshed');
+    t.ok(new Date(second.last_updated).getTime() > firstUpdated,
+      'last_updated refreshed, so the cleaner will not reap a live SBC');
 
     process.env.DEAD_SBC_IN_SECOND = 1;
     await new Promise(resolve => setTimeout(resolve, 2000));
